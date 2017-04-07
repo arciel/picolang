@@ -1,0 +1,45 @@
+# depslib dependency file v1.0
+1466778245 source:d:\projects\protolang\lexer.cpp
+	"Lexer.hpp"
+	"Tokens.hpp"
+	<iostream>
+	<string>
+	<sstream>
+
+1466539151 source:d:\projects\protolang\parser.cpp
+
+1466539170 source:d:\projects\protolang\syntaxtree.cpp
+
+1466778209 d:\projects\protolang\lexer.hpp
+	"Tokens.hpp"
+	<istream>
+
+1466721324 d:\projects\protolang\tokens.hpp
+	<string>
+
+1467831486 source:d:\projects\picolang\main.cpp
+	<iostream>
+	"Lexer.hpp"
+
+1467829877 d:\projects\picolang\lexer.hpp
+	"Tokens.hpp"
+	<istream>
+
+1467835868 d:\projects\picolang\tokens.hpp
+	<string>
+
+1466539151 source:d:\projects\picolang\parser.cpp
+
+1466539170 source:d:\projects\picolang\syntaxtree.cpp
+
+1467835423 source:d:\projects\picolang\lexer.cpp
+	"Lexer.hpp"
+	"Tokens.hpp"
+	<iostream>
+	<string>
+	<sstream>
+
+1467831449 source:d:\projects\picolang\tokens.cpp
+	"Tokens.hpp"
+	<iostream>
+

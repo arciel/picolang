@@ -1,0 +1,197 @@
+protolang #2 design
+
+A very simple high level language.
+Everything is an expression. 
+For now, _almost_ everything. 
+
+Types.
+	Integers.
+	Characters.
+	Strings.
+	Lists.
+	Lambdas.
+	Tables. TODO.
+	Functions. TODO.
+	
+Variables.
+	var integer := 1
+	var char := 'c'
+	var str := "Hello, World"
+	var list := (1, 2, 3)
+	var list2 := ('a',"non homogenous",list)
+	var table := [] TODO.
+
+Assignment.
+	Variables declared previously with `var` can me modified
+	like so.
+	
+	integer := integer + 1
+	c := 'p'
+	
+	An assignment of the form `a:=b` is an expression which evaluates
+	to `b`. So the following is legal.
+	
+	var a := b := 1;
+	
+	
+
+Operations.
+		
+	compound = elem ~ compound
+	compount = compound ~ elem 
+	
+	where ~ works like `cons` and depending
+	on the direction of elem, prepends or appends
+	the elem to the compound and returns a new
+	compound.
+	
+	To select an element from a compound,
+	var char := string:n
+	var int := (1, 2, 3):1
+	An out of bounds access results in a `nil`.
+	
+	An assignment to a selection modifies the selecting object,
+	not the selected object.
+	
+	var i:= 1 
+	var l := (i,2,3)
+	l:0 := 2
+	print(l) # 2 2 3
+	print(i) # 1
+
+	Aka, lists do not capture by reference.	
+	
+	More to come. 
+	TODO : head & tail / car & cdr
+	
+	
+Conditionals.
+	
+	integer is 1
+	str is "Hello"
+	list has 1
+	str has c
+	1 > 2
+	3 < 4
+	
+	if <condtional> then <> else <>
+	Conditionals can be joined with OR, AND and NOT.
+	
+	TODO : Think alternate syntax for NOT i is 1.
+	and NOT list has 1.
+	
+	The `if` statement is an expression since the `then` and 
+	`else` are not optional.
+	So a statement like,
+	a := 1
+	b := if a is 1 then "One" else "Many"
+	is completely OK.
+	
+	
+Loops.
+	
+	accum compound start $ x, a -> ...
+	
+	C++ style std::accumalate. 
+	Evaluates to `a` after the last call to the lambda has
+	been processed.
+	
+	while expr $ expr -> ...
+	
+		
+	
+
+Functions.
+	
+	No functions as such, only lambda objects are supported for now.
+	
+		$ x -> if x is 0 then 1 else x * $(x - 1)
+	creates a lambda object.
+	use with:
+	var factorial := $x -> if x is 0 ....
+	print factorial 
+	
+	Also, 
+		var inc := $ x => x = x + 1 
+	will define a function `inc` which takes arguments by-reference.
+	
+		var i:=1
+		inc(i)
+		print(i) # 2
+	
+	So far, I can't think of a good way to have multiple statements in a function object.
+	Later, might introduce some regular C-style functions.
+	
+	
+	
+Builtin Functions.
+	print()
+		evaluates to a nil.
+	typeof()
+		evaluates to the default empty value for the type of the argument.
+		ex. typeof("Hello") -> ""
+		ex. typeof((1,2,3)) -> ()
+		ex. typeof('c') -> '\0'
+		ex. typeof(#t) -> #f
+		ex. typeof(123) -> 0
+		This leads to unmanageable and crappy code.
+		Replace with C++-style decltype() and match functions
+		on types.
+		
+		
+Think.
+
+	Factorials and Fibonacci
+	fak := $ x -> if x is 0 then 1 else x * $(x-1)
+	fib := $ n -> if n is 0 or n is 1 then 1 else $(n-1) + $(n-2)
+	
+	Mutate a list in place.
+	list := (1, 2, 3)
+	loop list $ e => e := e*e
+	print list # (1, 4, 9)
+	
+	
+	Summing a list.
+	list := (1, 2, 3)
+	var sum := 0
+	loop list $ e -> sum := sum + e 
+	
+	But this sucks.
+	I want:
+	var list := (1,2,3)
+	var sum := magic(list)
+	
+	"Library" function `range`
+	range := $ a, b -> if a is b then () else a ~ $(a+1,b)
+	print range(1,5) # (1, 2, 3, 4)
+	
+	"Library" function `subset`
+	subset := $ compound, a, b -> if a is b then typeof(compound) else compound:a ~ $(compound,a+1,b)
+	print subset( range(1,10), 1, 5 ) # (1, 2, 3, 4)
+	
+	FizzBuzzFuzz program.
+	list := range(1, 100)
+	loop list $ n -> if n mod 15 is 0 then
+						print("Fuzz") else
+					 if n mod 5 is 0 then
+						print("Buzz"") else
+					 if n mod 3 is 0 then 
+						print("Fizz") else 
+					 print(n)
+	
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+

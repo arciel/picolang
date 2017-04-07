@@ -1,0 +1,166 @@
+# This grammar and the implementation may differ
+# in places.
+
+# pico
+# The little language.
+
+# More-or-less final grammar
+
+# Operators are now infix
+# as was originally designed.
+
+# Specifications in EBNF
+# {abc} -> 0-or-more repetitions of abc
+# [abc] -> 0-or-1 repetition of abc
+
+# ------------------1212121212------------
+# -----------------12--------12-----------
+# ----------------12----------12----------
+# ----------------12-----------12---------
+# ----------------12------------12--------
+# ----------------12-----------12---------
+# ----------------12----------12----------
+# ----------------121212121212------------
+# ----------------12----------------------
+# ----------------12----------------------
+# ----------------12----------------------
+# ----------------12----------------------
+# ----------------12----------------------
+# ----------------12----------------------
+
+# A program in pico is essentially a series of expressions-
+start := expression-list
+
+# A list of expressions-
+# They are separated by an `expression-separator`,
+# currently defined to be newlines and semicolons-
+# Newlines are otherwise skipped,
+# to allow things like expressions spanning multiple lines.
+
+expression-list := expression { expression-separator expression }
+
+expression := decl-expr
+expression := assign-expr
+expression := if-expr
+expression := funcall-expr
+
+# Lambda expressions
+
+lambda-expr := lambda-expr-bind | lambda-expr-copy
+lambda-expr-copy := "$" { identifier-name } "->" "{" expression-list "}"
+lambda-expr-bind := "$" { identifier-name } "=>" "{" expression-list "}"
+
+# Function calls
+funcall-args := rvalue | lambda-expr # Possible arguments to a function
+funcall-expr := identifier-name "(" [funcall-args] {"," funcall-args} ")"
+
+# Length expressions
+
+len-expr := "|" rvalue "|"
+
+# Numeric Expressions- The most headache part-
+
+# These subsume things like |A| and function(argument1,---)
+# And math expressions like 1+1*2 and so on-
+# A full numeric-expr looks like
+# list[1] - 5 * |list-name| + somefunction("Someargument") mod 5
+# Operator precedence is given in the design document-
+# Typechecking is done at runtime-
+
+numeric-expr-op-infix := "+" | "-" | "*" | "/" | "mod"
+
+numeric-expr-terms := select-lvalue-expr
+numeric-expr-terms := identifier-name
+numeric-expr-terms := integer-literal
+numeric-expr-terms := len-expr
+numeric-expr-terms := funcall-expr
+
+numeric-expr := "%" numeric-expr-terms { numeric-expr-op-infix numeric-expr-terms } "%"
+
+# Cons expression-
+cons-expr := identifier-name "~" rvalue
+cons-expr := mixed-list "~" rvalue
+cons-expr := string-literal "~" identifier-name
+
+# if statements
+
+if-test-expr := identifier-name "is" rvalue
+if-test-expr := identifier-name "has" rvalue
+
+#TODO : Generalize this properly!
+
+if-expr := "if" "(" if-test-expr ")" "then" "{" rvalue | expression-list "}" "else" "{" rvalue | expression-list "}" "endif"
+
+# TODO : Think about test-expr and limit consequent expr's-
+
+# Loops / Accumulation
+## Accum has function call syntax-
+## Since the function is built inside the interpreter,
+## We don't need to parse it here- It gets treated like a regular
+## function call-
+
+# Assignments
+assign-expr := lvalue ":=" rvalue
+assign-expr := lvalue ":=" lambda-expr
+
+# Variable declaration
+decl-expr := "var" identifier-name ":=" rvalue
+decl-expr := "var" identifier-name ":=" lambda-expr
+
+# Selection expression
+# For accessing the underlying elements of a list
+# or a string
+select-expr := select-lvalue-expr | select-rvalue-expr
+
+selectable-lvalue := identifier-name #| select-lvalue-expr
+# Investigate possible infinite parse loop here^^^^^^^^-
+# This is here so we can do a multiselect var[1][2]-
+# Disallow for now-
+
+selectable-rvalue := string-literal | list-literal | cons-expr # | list
+
+select-lvalue-expr := selectable-lvalue "[" numeric-expr "]"
+select-rvalue-expr := selectable-rvalue "[" numeric-expr "]"
+
+
+# Possible LVALUES
+# lvalues can be assigned to-
+# Assigning to lvalues is always by (deep) copy-
+
+lvalue := identifier-name	# We can assign data to a variable name
+lvalue := select-lvalue-expr # and to the element of a list-
+
+
+# Possible RVALUES
+# rvalues are things which can be read from-
+# Assigning from rvalues is always by (deep) copy-
+# Explicit rvalues cannot be written to-
+
+rvalue := lvalue # all lvalues are also rvalues
+rvalue := rvalue-explicit
+
+rvalue-explicit := literal
+rvalue-explicit := numeric-expr
+rvalue-explicit := if-expr
+rvalue-explicit := select-rvalue-expr
+rvalue-explicit := cons-expr
+rvalue-explicit := funcall-expr
+rvalue-explicit := list # investigate me.
+
+# TODO : Extend this to support "_"
+
+identifier-name := character { character | digit }
+
+# Literals that can be present in source code
+
+digit := "0" | "1" | "2" --- "9"
+non-zero-digit := "1" | "2" | --- "9"
+character := "a" -- "z" | "A" -- "Z"
+expression-separator := "\n" | ";"
+
+integer-literal := ["-"] non-zero-digit {digit}
+character-literal := "'"character"'"
+bool-literal := "@t" | "@f"
+string-literal := "`"{character|digit}"`"
+list-literal := "[" [literal] {"," literal} "]"
+literal := integer-literal | character-literal | string-literal | list-literal

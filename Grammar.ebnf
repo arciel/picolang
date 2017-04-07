@@ -1,0 +1,117 @@
+# The protolang grammar
+# specified in EBNF.
+# Commas are not specified.
+
+# {abc} specifies 0-or-more occurences of abc
+# [abc] specifies 0-or-1 occurences of abc.
+
+# Typechecking is performed by the interpreter and not handled here.
+# i.e. the parser will accept "abc" / 5 as a valid expression.
+
+start := {expr}
+
+#expressions
+expr := loop-expr
+expr := if-expr
+expr := eval-expr
+expr := sel-expr
+expr := cons-expr
+expr := len-expr
+expr := numeric-expr
+expr := boolean-expr
+expr := assign-expr
+expr := var-expr
+
+#boolean expression
+
+#numeric expressions
+
+numeric-expr := numeric-term { numeric-infix-op numeric-term }
+numeric-infix-op := "+" | "-" | "*" | "/" | "mod"
+numeric-term := identifier | int-literal | sel-expr | eval-expr | len-expr
+
+#loops
+loop-expr := "accum" (identifier|compound) (identifier|lambda)
+
+#if and conditionals
+
+test-expr := ??????
+if-expr := "if" test-expr "then" expr "else" expr
+
+# lambda
+# lambdas can receive arguments by ref. 
+lambda := lambda-copy | lambda-ref
+
+lambda-copy := "$" [identifier] {"," identifier} "->" expr
+lambda-ref := "$" [identifier] {"," identifier} "=>" expr
+
+# function call
+eval-expr := identifier "(" [identifier|rvalue] {"," (identifier|rvalue)} ")"
+eval-expr := "$" "(" [identifier|rvalue] {"," (identifier|rvalue)} ")"
+
+## operations on compounds
+
+# 1. Length expression 
+len-expr := "|" identifier|compound "|"
+len-expr := "|" string-literal "|"
+
+# 2. Selecting an element from a compound-object
+sel-expr := sel-expr-lv | sel-expr-rv 
+sel-expr-lv := "sel" identifier numeric-expr
+sel-expr-rv := "sel" compound-object numeric-expr
+
+# 3. Appending to a compound-object, returning a compound-object
+cons-expr := "cons" (identifier|compound-object) (identifier | literal | compound-object)
+
+compound-object := cons-expr
+compound-object := sel-expr # not guaranteed. typechecker will handle this.
+
+#assignment expressions
+assign-expr := lvalue ":=" rvalue
+
+#variable declarations
+var-expr := "var" identifier ":=" rvalue
+
+# lvalue definitions
+# lvalues can be assigned to.
+
+lvalue := identifier
+lvalue := sel-expr-lv
+
+# rvalue definitions
+# rvalues can be assigned from
+
+rvalue := identifier
+rvalue := literal
+rvalue := lambda
+rvalue := numeric-expr
+rvalue := boolean-expr
+rvalue := var-expr
+rvalue := assign-expr
+rvalue := len-expr
+rvalue := if-expr 
+rvalue := compound-object
+
+#compound-objects can be iterated on, can be cons'd and sel'd
+
+compound-object := "(" [literal | identifier] {"," literal|identifier} ")"
+compound-object := string-literal
+
+# literal values specified in source code.
+literal := string-literal | bool-literal | int-literal | list-literal | char-literal
+
+#These are handled by the lexer.
+string-literal := "`"{character}"`" # strings are enclosed in backticks
+#bool-literal := "#t" | "#f"
+int-literal := ["-"]digit{digit}
+char-literal := "'"character"'"
+list-literal := "(" [literal] {"," literal} ")"
+identifier := character{character | digit}
+
+character := "a" - "z" | "A" - "Z"
+digit := "0" - "9"
+
+
+
+
+

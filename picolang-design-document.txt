@@ -1,0 +1,432 @@
+                            ._
+    ____   (_)_____ ____   / /____ _ ____   ____ _
+   / __ \ / // ___// __ \ / // __ `// __ \ / __ `/
+  / /_/ // // /__ / /_/ // // /_/ // / / // /_/ /
+ / .___//_/ \___/ \____//_/ \__,_//_/ /_/ \__, /
+/_/                                      /____/
+
+
+picolang design document.
+
+This document may contain some differences from
+the file `Grammar.ebnf` and the actual C++
+implementation. This document represents an ideal
+vision of the language.
+
+The underlying grammar may change without diverging from
+the syntax and semantics given here.
+
+pico is designed around the idea that (nearly) everything
+is an expression. This document is a walkthrough of the
+language.
+
+
+# Comments.
+
+The `#` character is a comment marker.
+Everything from the `#` to newline is discarded
+by the lexer.
+
+1. Variable declarations.
+
+    A new variable is declared as follows.
+
+        var myint := 10
+        var mychar := 'a'
+        var mystring := `Hello World`
+        var mylist := [1, 2, 3]
+
+    The `var` keyword reserves a variable name
+    and assigns to it the expression following the
+    `:=` symmbol.
+
+        var int := 5
+        var int := 2+3
+        var int := 2+2*2+1
+        var int := [1, 2, 3]<1>  #2
+
+        var char := 'c'
+        var char := 'b'+1
+        var char := `string`<1> # 't'
+
+        var list := [1, 2, 3]
+        var list2 := ['a', `non homogenous`, list]
+
+        var func := $ a, b -> { a+b }
+
+	A variable declaration evaluates to the right hand side.
+	This means that variable declarations can be cascaded.
+
+        var a := var b := var c := 3
+
+	Here, `a` `b` and `c  are all declared to have the value 3.
+
+2. Assignment.
+
+	The `:=` symbol serves  as an assignment operator.
+	The identifier to the left of `:=` has its value
+	overwritten by the expression to the right of `:=`.
+
+	The `:=` can also be used to change the elements of
+	a list or string.
+
+        var mylist := [1, 2, 3]
+        mylist<1> := 99
+        print(mylist) # [1, 99, 3]
+        var mystr := `Hello World`
+        mystr<0> := 'Y'
+        print(mystr) # Yello World
+
+        [1, 2, 3]<1> := 2 # Not allowed. Meaningless.
+
+	Like declarations, assignments can also cascade.
+
+        a := b := var c := 1+1+1
+
+	Here `a` `b` and `c` all contain the value 3.
+
+	A variable once attached to a particular type cannot be
+	used to store data for a different type.
+
+        var v := 1
+        v := '1' # Runtime error.
+
+	Lists are an `exception` of sorts, see below.
+
+	Assigments are always by copy. Never by reference.
+
+        var int := 1
+        var list := [int, int, int]
+        int := 2
+        print(list) # [1, 1, 1]
+
+3. Lists
+
+	A list is a collection. List elements can be primitive
+	types, like integers or characters, or composite types
+	like other lists. A list's elements need not be of the
+	same type.
+
+        var list := [1, 2, 3]
+        var list2 := ['a', `non-homogenous`, list]
+
+	Lists capture elements by deep copying. Continuing the
+	above example...
+
+        list<0> := 99
+        print(list)   # [99, 2, 3]
+        print(list2) # ['a',`non-homogenous`, [1, 2, 3]]
+   
+    A string like `Hello` is equivalent to a list of the composing characters.
+    Everything that can be done to a list, can also be done to a string
+    but strings are always a list of characters, and cannot be heterogenous.
+
+	Since a list can have non heterogenous elements, the type
+	locking of variables can be circumvented in lists.
+
+		var list := [1, 2, 3]
+		print(list) # [1, 2, 3]
+		list<1>  := 'a'
+		print(list) # ['a', 2, 3]
+
+TODO : RECONSIDER THIS
+
+    This is consistent because the type of the variable `list`
+    is not modified. It was a List and stays a List throughout.
+	In other words, the elements of a list are not part of its
+	type.
+
+4.	Operations on Lists.
+
+    1. Length.
+
+            | list |
+
+    Evaluates to the (1-based) number of elements in the list.
+	If the operand is not a list, a `nil` is the result.
+
+			print(|`Hello World`|) # 11
+			print(|[1, 2, 3]|) # 3
+
+	2. Selection
+
+	<> following a list will evaluate to the element of the list specified
+	inside the brackets.
+
+	For example,
+
+			print([1, 2, 3]<0>) # 1
+            print(`Hello`[1]) # e
+
+    To dereference a list-of-lists,
+
+			var l1 := [1, 2, 3]
+			var l2 := [l1, l1, l1]
+			print(l2<1,2>) # 2
+
+    i.e., <a, b> will select the 2nd element of the 1st element of the
+    list the operation has been applied to.
+
+    A `nil` is the resultant of invalid accesses.
+
+            print([1, 2, 3]<99>) # nil
+
+	3. Cons.
+
+	Concatenate lists.
+
+	list1 ~ list2 will evaluate to a list that  has all elements of list1, followed
+	every every element in list2.
+
+            var li1 := [1, 2, 3]
+            var li2 := [4, 5, 6]
+            print(li1 ~ li2) # [1, 2, 3, 4, 5, 6]
+			print(li2 ~ li2) # [4, 5, 6, 1, 2, 3]
+
+  5. Conditionals
+
+        if <condition> then <expr1> else <expr2> endif
+
+	`if` is an expression itself, so
+
+        var int := 1
+		var a := if int is 1 then `One` else `Many` endif
+		print(a) # One
+
+	is completely legal.
+
+	The condition in an if is always of the form
+        
+        a is b which tests for equality.
+		a has b which tests for the membership of b in the list/string a.
+
+	"is" and "has" are usable only inside an if-expr for now. There are no
+	boolean	constants, relational operators or variables for now.
+
+6. Functions
+
+	pico does not  have the notion of functions, only lambda objects.
+
+		$ arg1, arg2, ..., argn ->  { <expressions> }
+
+	declares a lambda object. Lambdas can be freely passed as arguments
+    to other lambdas.
+
+	To use (call) a lambda, bind it to a variable.
+
+        var fact := $ n -> { if n is 0 then 1 else n * $(n-1) }
+		print(fact(5)) # 120
+
+	$(...) inside a lambda calls the current function. (Recursion)
+
+	Lambdas are stateless. They can only access passed arguments,
+	and lambdas declared in outer scopes.
+
+	Lambdas also support capturing arguments by reference.
+	A reference capturing lambda looks like
+
+		var inc := $ x => { x := 1+x }
+		var int := 1
+		inc(int)   #`int` is captured by reference
+		print(int) # 2
+
+	This is used when captured arguments need to be mutated.
+
+	Since lambdas can be passed around as arguments to other lambdas,
+    a functional programming style can be used with pico.
+
+		var list := [1, 2, 3, 4]
+		print(map(list, $ x => x := x*2 )) #[2, 4, 6, 8]
+
+	See Appendix for the details of the `map` function.
+
+7. I/O
+
+    Pico comes with two functions for console I/O.
+
+		read(ident-name)
+		write(expr)
+
+	read will read a value from the console/STDIN corresponding to
+	the type of the variable given as the argument.
+
+		var v1 := 0
+		var v2 := `Hello`
+		var v3 := (1,2)
+		read(v1) # read an integer from the console
+		read(v2) # read a string from the console
+		read(v3) # read a list from the console.
+
+	The `read` function modifies its argument.
+	Since read itself is an expression, the value read from the
+	console is propagated forward.
+
+		var v1 := 0
+		read(v1)
+        if v1 is 1 then <code involving v1> else <code involving v1>  endif
+
+	can be written more compactly as
+
+		var v1 := 0
+		if read(v1) is 1 then <code involving v1> else <.....> endif
+
+	write outputs the expression given as its argumentt to the STDOUT stream.
+	write does not output any newlines or spaces.
+
+	#TODO replace `print` with `write`.
+
+8. Generic Code / `typeof`
+
+	typeof(ident) returns @Int, @Char, @String, or @List
+	
+9. Cool operations on lists.
+
+	[1, 2, ...] is a lazy list whose elements are computed on demand.
+	[0, 2, ..., 10] is a lazy list which has an end point.
+	[..., $  i -> i * i] is a lazy list whose elements are generated on demand.
+
+	list<a> will select the a'th element of list.
+	list<a,b> will select the b'th element of the a'th element of list.
+	list<a..b> will select a subset of `list` from index a to b-1.
+	list<$ pred -> ...> will generate a subset of elements obeying predicate. #filter
+	list<$ a, b -> ...> will accumulate/fold through the list following $ a,b. #reduce
+
+	These operations can be chained together.
+	
+    Examples:
+
+        list<$ e -> if e mod 5 is 0 then @t else @f endif>
+
+    will select a subset of list based on the predicate.
+    Here, elements divisible by 5 are selected.
+
+        list<$ a, b -> {a + b}> will sum the list.
+
+    Putting it all together,
+
+        var div3 := $ e -> { if e mod 3 is 0 then @t else @f endif }
+        var cubes := [..., $ i -> { i*i*i }]
+	    print(cubes<div3, 0..100, $ a, b -> { a + b }>)
+
+    will compute the sum of the first 100 cubes which are divisible by three.
+
+10. Sequencing / Comma operator
+
+        expr1; expr2 executes both its arguments and then evaluates to
+        expr2
+
+        TODO : Provide more examples.
+
+A. Operator Precedence, Association, etc.
+
+	MOST PRECEDENCE         ASSOCIATIVITY           EXAMPLES                                NOTES
+
+        <> ()               LEFT TO RIGHT           fctlist<a>(1)  -> (fctlist<a>)(1)       This is possibly incorrect.
+        / *                 LEFT TO RIGHT           1 / 2 * 3	   -> (1/2)*3 -> 5          
+        + -                 RIGHT TO LEFT           1 + 2 - 3	   -> 1 + (2 - 3)  -> 0     
+        "mod"               LEFT TO RIGHT           20 mod 7 mod 5 -> (20 % 7) % 5 -> 1     
+        ~                   LEFT TO RIGHT		    l1 ~ l2 ~ l3   -> (l1~l2)~l3)           ~ is freely associative
+        "is" "has"          NON ASSOCIATIVE         NOT APPLICABLE    
+        :=                  RIGHT TO LEFT		    a := b := c    -> (a := (b := c))
+        ;                   LEFT TO RIGHT           expr1;expr2;expr3 -> ((expr1;expr2);expr3)
+
+	LEAST PRECEDENCE
+
+    The selector <> sticks to the operand immediately to the left of it. Unary.
+	The function call () sticks to the identifier immediately to the left of it. Unary.
+	
+
+B.	Scoping  Rules. TODO
+
+D. List of constants
+
+	@t @f
+	@Int @Char @String @List
+
+C. List of `Library` Functions
+
+	1. Map
+
+        var map := $ list, func -> list<$ x => { func(x); @t }>
+
+    Given a list and  a function, map will generate a list in which each
+	element of   the given list has had each element passed through the function.
+
+        (e1, e2, ...) f(x) => (f(e1), f(e2), ...)
+
+	The function passed to `map` must always be by reference.
+	It needs to modify the passed in value.
+
+	Example.
+
+        write(map([1, 2, 3], $ e => e := e*e))  # [1, 4, 9]
+
+	2. Match.
+
+        var match := $ expr, pairs -> { if |pairs| is 0
+                                           then nil
+	                                    else
+                                            if pairs<0,0>(expr)
+                                                then pairs<0,1>(expr)
+                                            else
+                                                match(expr, pairs<1..|pairs|>)
+                                            endif
+                                        endif }
+
+    `match` is a generalised `switch-case` statement that takes an expression and
+    a list of pairs of lambdas.
+
+	The first lambda of each pair is successively invoked with the expression.
+	If the lambda returns true, the second lambda is executed.
+
+	Example.
+
+		var day := 0
+		read(day)
+		var strday := match(day,(
+						($ i -> i is 0, $ i -> "Sunday"),
+						($ i -> i is 1, $ i -> "Monday"),
+						($ i -> i is 2, $ i -> "Tueday"),
+                        ($ i -> i is 3, $ i -> "Wednesday"),
+	                    ($ i -> i is 4, $ i -> "Thursday"),
+                        ($ i -> i is 5, $ i -> "Friday"),
+	                    ($ i -> i is 6, $ i -> "Saturday"),
+                        ($ i -> @t, $ i -> "Invalid Input Day")))
+        write("Today is ", strday)
+
+	3. Flatten
+
+        var flatten := $ list -> flatten_impl(list<0>) ~ flatten_impl(list<1..|list|>)
+        var flatten_impl := $ e -> if typeof(e) is @Unit then [e] else flatten(e) endif
+
+	Flatten a list
+
+	#TODO #TODO 
+    Think of something clever.
+
+    Given a list (1, (1,2,3), ((4)))
+	convert it into a flat list : (1, 1, 2, 3, 4)
+
+D. Arithmetic.
+
+    The pico arithmetic operators perform rational number arithmetic.
+    i.e. the expression 5/7 is stored as a pair (5,7) internally.
+    Rational numbers are always stored in reduced form.
+    
+    The write(..) function always prints rational numbers in floating
+    point style. 
+        
+        write(22/7) # 3.14...
+
+
+
+
+
+
+
+
+
+
+
+
+
